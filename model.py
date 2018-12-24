@@ -26,7 +26,7 @@ os.chdir("/home/thebbennett/rooftopNN/Images/compressed/images/")
 
 IMAGE_SIZE    = (256, 256)
 CROP_LENGTH   = 224
-NUM_CLASSES   = 2
+NUM_CLASSES   = 1
 BATCH_SIZE    = 8  
 FREEZE_LAYERS = 2  # freeze the first this many layers for training
 NUM_EPOCHS    = 20
@@ -54,8 +54,6 @@ def crop_generator(batches, crop_length):
         yield (batch_crops, batch_y)
 
 ##############################
-
-
 train_datagen = ImageDataGenerator(preprocessing_function=preprocess_input,
                                    rotation_range=40,
                                    width_shift_range=0.2,
@@ -74,7 +72,6 @@ train_batches = train_datagen.flow_from_directory('/home/thebbennett/rooftopNN/I
                                                   shuffle=True,
                                                   batch_size=BATCH_SIZE)
 
-
 valid_datagen = ImageDataGenerator(preprocessing_function=preprocess_input)
 valid_batches = valid_datagen.flow_from_directory('/home/thebbennett/rooftopNN/Images/compressed/images/valid',
                                                   target_size=IMAGE_SIZE,
@@ -83,15 +80,8 @@ valid_batches = valid_datagen.flow_from_directory('/home/thebbennett/rooftopNN/I
                                                   shuffle=False,
                                                   batch_size=BATCH_SIZE)
 
-
-
 train_crops = crop_generator(train_batches, CROP_LENGTH)
 valid_crops = crop_generator(valid_batches, CROP_LENGTH)
-
-
-
-
-
 
 ##############################
 net = ResNet50(include_top=False, weights='imagenet', input_tensor=None,
