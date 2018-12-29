@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Rooftop Image Classification from Satellite Imagery
 Denver,CO
@@ -7,7 +6,7 @@ Brittany Bennett
 December 2018 
 """
 
-# Load the necessary pockages
+# Load the necessary pockagest
 import os
 import glob
 import numpy as np
@@ -16,9 +15,8 @@ import matplotlib.pyplot as plt
 import PIL.Image
 from keras.utils import Sequence
 import random
-import matplotlib.image as mpimg
 from keras.models import Model
-from keras.layers import Conv2D, Conv2DTranspose, Dense, Input,Flatten, Activation, MaxPooling2D
+from keras.layers import Conv2D, Conv2DTranspose, Dense, Input,Flatten, Activation, MaxPooling2D, UpSampling2D
 from keras.layers.normalization import BatchNormalization
 from keras.layers.core import Dropout
 from keras.preprocessing import image
@@ -28,10 +26,22 @@ from keras import optimizers
 from keras import regularizers
 from keras import initializers
 from keras.callbacks import EarlyStopping
+from keras.optimizers import Adam
+import pandas as pd
+from keras.models import *
+from keras.layers import *
+from keras.optimizers import *
+from keras.callbacks import ModelCheckpoint
+from keras.preprocessing.image import array_to_img
+import cv2
 
 #callbacks = [history, EarlyStopping(monitor='val_loss', patience=5, verbose=1, min_delta=1e-4)]
 
+# Just disables the warning, doesn't enable AVX/FMA
+
 os.chdir("/home/thebbennett/rooftopNN/data/")
+#runfile("general_tool_7_8.py")
+
 np.random.seed(1234)
 class DataSeq(Sequence):
     def __init__(self,batch_size,crop_size,img_name_list):
@@ -82,36 +92,31 @@ class DataSeq(Sequence):
 
 
 
-            return batch_x, batch_y[:,:,:,:1]
+            return batch_x[:,:,:,:1], batch_y[:,:,:,:1]
 
 
 path = 'train/images/*.jpg'   
 img_name_list=glob.glob(path)
 
-train = DataSeq(batch_size = 15, crop_size = (256,256),img_name_list = img_name_list)
-batch_x, batch_y = train[0]
+batch_size = 4
+num_samples = len(img_name_list)
+
+train = DataSeq(batch_size = batch_size, crop_size = (256,256),img_name_list = img_name_list)
 
 path = 'test/images/*.jpg'   
 img_name_list=glob.glob(path)
 test = DataSeq(batch_size = 5, crop_size = (256,256),img_name_list = img_name_list)
-test_x, test_y = test[0]
-
-#create a convultional kernel. output 4 filters , length of 3, 
-#have output the same size as the input
-#use relu activation 
-
-# , kernel_initializer= init, bias_initializer='zeros'
-# kernel_regularizer=regularizers.l2(0.01)
-
+"""
 inputs = Input(shape=(256,256,3))
 x = inputs
 
-x = Conv2D(2,kernel_size=3,strides=2,padding='same',activation='elu')(x)
-x = Conv2D(4,kernel_size=3,strides=1,padding='same',activation='elu')(x)#x = Conv2D(12,kernel_size=3,strides=2,padding='same',activation='elu',  kernel_regularizer=regularizers.l2(0.01))(x)
-#x = Conv2D(8,kernel_size=3,strides=2,padding='same',activation='elu')(x)
-"""
-x = Conv2D(16,kernel_size=3,strides=1,padding='same',activation='elu')(x)
-x = Conv2D(24,kernel_size=3,strides=2,padding='same',activation='elu')(x)
+x = Conv2D(4,kernel_size=3,strides=2,padding='same',activation='relu')(x)
+x = Conv2D(8,kernel_size=3,strides=1,padding='same',activation='relu')(x)#x = Conv2D(12,kernel_size=3,strides=2,padding='same',activation='elu',  kernel_regularizer=regularizers.l2(0.01))(x)
+#x = Conv2D(256,kernel_size=3,strides=2,padding='same',activation='elu')(x)
+
+#x = Conv2D(16,kernel_size=3,strides=1,padding='same',activation='elu')(x)
+#x = Conv2D(24,kernel_size=3,strides=2,padding='same',activation='elu')(x)
+
 x = Conv2D(32,kernel_size=3,strides=1,padding='same',activation='elu')(x)
 x = Conv2D(40,kernel_size=3,strides=2,padding='same',activation='elu')(x)
 x = Conv2D(44,kernel_size=3,strides=1,padding='same',activation='elu')(x)
@@ -119,8 +124,6 @@ x = Conv2D(48,kernel_size=3,strides=2,padding='same',activation='elu')(x)
 x = Conv2D(52,kernel_size=3,strides=1,padding='same',activation='elu')(x)
 x = Conv2D(56,kernel_size=3,strides=2,padding='same',activation='elu')(x)
 x = Conv2D(60,kernel_size=3,strides=1,padding='same',activation='elu')(x)
-
-
 x = Conv2DTranspose(60,kernel_size=3,strides=1,padding='same',activation='elu')(x)
 x = Conv2DTranspose(56,kernel_size=3,strides=2,padding='same',activation='elu')(x)
 x = Conv2DTranspose(52,kernel_size=3,strides=1,padding='same',activation='elu')(x)
@@ -128,35 +131,89 @@ x = Conv2DTranspose(48,kernel_size=3,strides=2,padding='same',activation='elu')(
 x = Conv2DTranspose(44,kernel_size=3,strides=1,padding='same',activation='elu')(x)
 x = Conv2DTranspose(40,kernel_size=3,strides=2,padding='same',activation='elu')(x)
 x = Conv2DTranspose(32,kernel_size=3,strides=1,padding='same',activation='elu')(x)
-x = Conv2DTranspose(24,kernel_size=3,strides=2,padding='same',activation='elu')(x)
-x = Conv2DTranspose(16,kernel_size=3,strides=1,padding='same',activation='elu')(x)
-"""
-#x = Conv2DTranspose(8,kernel_size=3,strides=2,padding='same',activation='elu')(x)
-x = Conv2DTranspose(4,kernel_size=3,strides=1,padding='same',activation='elu')(x)
-x = Conv2DTranspose(2,kernel_size=3,strides=2,padding='same',activation='elu')(x)
+
+#x = Conv2DTranspose(24,kernel_size=3,strides=2,padding='same',activation='elu')(x)
+#x = Conv2DTranspose(16,kernel_size=3,strides=1,padding='same',activation='elu')(x)
+#x = Conv2DTranspose(256,kernel_size=3,strides=2,padding='same',activation='elu')(x)
+x = Conv2DTranspose(8,kernel_size=3,strides=1,padding='same',activation='relu')(x)
+x = Conv2DTranspose(4,kernel_size=3,strides=2,padding='same',activation='relu')(x)
 x = Conv2DTranspose(1,kernel_size=3,strides=1,padding='same',activation='sigmoid')(x)
 #x = Conv2D(1,kernel_size=3,strides=1,padding='same',activation='relu')(x)
 #x = Conv2D(1,kernel_size=3,strides=1,padding='same',activation='sigmoid')(x)
 
 model = Model(inputs,x)
-
-#from keras.optimizers import SGD
-
-adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
 model.compile(optimizer= adam ,loss='binary_crossentropy', metrics=['accuracy','mae'])
-model.summary()
+"""
+
+def get_model(optimizer, loss_metric, metrics, lr=1e-3):
+    inputs = Input((256, 256, 1))
+    conv1 = Conv2D(8, (3, 3), activation='relu', padding='same')(inputs)
+    conv1 = Conv2D(8, (3, 3), activation='relu', padding='same')(conv1)
+    pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
+    drop1 = Dropout(0.5)(pool1)
+
+    conv2 = Conv2D(16, (3, 3), activation='relu', padding='same')(drop1)
+    conv2 = Conv2D(16, (3, 3), activation='relu', padding='same')(conv2)
+    pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
+    drop2 = Dropout(0.5)(pool2)
+
+    conv3 = Conv2D(32, (3, 3), activation='relu', padding='same')(drop2)
+    conv3 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv3)
+    pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
+    drop3 = Dropout(0.3)(pool3)
+
+    conv4 = Conv2D(64, (3, 3), activation='relu', padding='same')(drop3)
+    conv4 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv4)
+    pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)
+    drop4 = Dropout(0.3)(pool4)
+
+    conv5 = Conv2D(128, (3, 3), activation='relu', padding='same')(drop4)
+    conv5 = Conv2D(128, (3, 3), activation='relu', padding='same')(conv5)
+
+    up6 = concatenate([Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(conv5), conv4], axis=3)
+    conv6 = Conv2D(64, (3, 3), activation='relu', padding='same')(up6)
+    conv6 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv6)
+
+    up7 = concatenate([Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same')(conv6), conv3], axis=3)
+    conv7 = Conv2D(32, (3, 3), activation='relu', padding='same')(up7)
+    conv7 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv7)
+
+    up8 = concatenate([Conv2DTranspose(16, (2, 2), strides=(2, 2), padding='same')(conv7), conv2], axis=3)
+    conv8 = Conv2D(16, (3, 3), activation='relu', padding='same')(up8)
+    conv8 = Conv2D(16, (3, 3), activation='relu', padding='same')(conv8)
+
+    up9 = concatenate([Conv2DTranspose(8, (2, 2), strides=(2, 2), padding='same')(conv8), conv1], axis=3)
+    conv9 = Conv2D(8, (3, 3), activation='relu', padding='same')(up9)
+    conv9 = Conv2D(8, (3, 3), activation='relu', padding='same')(conv9)
+
+    conv10 = Conv2D(1, (1, 1), activation='sigmoid')(conv9)
+
+    model = Model(inputs=[inputs], outputs=[conv10])
+
+    model.compile(optimizer=optimizer(lr=lr), loss=loss_metric, metrics=metrics)
+    return model
+smooth = 1
+# Dice Coefficient to work with Tensorflow
 
 
-#from sklearn.model_selection import train_test_splitm#X_train, X_test, y_train, y_test = train_test_split(batch_x, batch_y[:,:,:,:1],test_size=0.2)
+model = get_model(optimizer=Adam, loss_metric= 'binary_crossentropy', metrics=[ 'accuracy','mae'], lr=1e-3)
+
                    
 history = model.fit_generator(generator = train,
-                   steps_per_epoch = 20,
-                   epochs = 10,
+                   steps_per_epoch = 5,
+                   epochs = 50,
                    #callbacks=callbacks, # Early stopping
-                   validation_data = test,            
-                   validation_steps= 5)
+                   validation_data = test)           
+                   #validation_steps= 10)
                    #verbose = 0)
 
+"""
+acc.append((model.history.history['acc'][-1]))
+val.append((model.history.history['val_acc'][-1]))
+loss.append((model.history.history['loss'][-1]))
+
+"""
 print(history.history.keys())
 
 import matplotlib.pyplot as plt
@@ -181,7 +238,6 @@ plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.show()
 f2.savefig("modelloss.png")
 
 f3 = plt.figure(figsize=(10, 10))
@@ -191,11 +247,10 @@ plt.title('model accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.show()
 f3.savefig("accuracy.png")
 
 
-img =image.load_img('/home/thebbennett/rooftopNN/data/train/images/036622ne225sw_compressed_resized.jpg',
+img =image.load_img('/home/thebbennett/rooftopNN/data/train/images/05681004se.jpg',
                     target_size = (256,256))
 test_image = image.img_to_array(img)
 
@@ -211,14 +266,11 @@ plt.imshow(img)
 ax2 = f4.add_subplot(1,2, 2)
 ax2.set_title("Predicted Mask",fontdict={'fontsize': 60, 'fontweight': 'medium'})
 plt.imshow(img)
-plt.imshow(predicted_mask1 > 0.5, alpha = 0.6)
-plt.show(block=True)
+plt.imshow(predicted_mask1, alpha = 0.6)
 f4.savefig("predict.png")
 
 
-
-
-img =image.load_img('/home/thebbennett/rooftopNN/data/train/images/046733se120sw_compressed_resized.jpg',
+img =image.load_img('/home/thebbennett/rooftopNN/data/train/images/05681403se.jpg',
                     target_size = (256,256))
 test_image = image.img_to_array(img)
 
@@ -234,12 +286,8 @@ plt.imshow(img)
 ax2 = f5.add_subplot(1,3, 2)
 ax2.set_title("Predicted Mask",fontdict={'fontsize': 60, 'fontweight': 'medium'})
 plt.imshow(img)
-plt.imshow(predicted_mask2 > 0.5, alpha = 0.6)
+plt.imshow(predicted_mask2 > 0.1, alpha = 0.8)
 ax3 = f5.add_subplot(1,3,3)
 ax3.set_title("Probabilities",fontdict={'fontsize': 60, 'fontweight': 'medium'})
 plt.imshow(predicted_mask2)
-
-plt.show(block=True)
 f5.savefig("predict2.png")
-
-print(model.get_weights())
