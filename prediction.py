@@ -48,12 +48,6 @@ for image in classes:
     
 pixels = sum(sums)
 
-original_dim = 2640 
-
-original_feet = 0.5 / original_dim
-
-new_dim = 0.5 * img_width / original_dim
-
-pixels * new_dim
+pixels * (5280/256)
 
 
